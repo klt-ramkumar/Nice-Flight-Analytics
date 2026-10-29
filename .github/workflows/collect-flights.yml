@@ -2,7 +2,8 @@ name: Collect Nice departures
 
 on:
   schedule:
-    - cron: '41 * * * *'
+    - cron: '0 1,4,7,10,13,16,19,22 * * *'
+      timezone: 'Europe/Paris'
   workflow_dispatch:
 
 permissions:
@@ -20,7 +21,6 @@ jobs:
       AIRLABS_API_KEY: ${{ secrets.AIRLABS_API_KEY }}
       NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
       FLIGHT_MAX_PAGES: '3'
-      FLIGHT_MIN_INTERVAL_HOURS: '3'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
