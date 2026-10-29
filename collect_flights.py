@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -13,9 +14,12 @@ API_URL = "https://airlabs.co/api/v9/schedules"
 AIRPORT = "NCE"
 PAGE_SIZE = 100
 MAX_PAGES = int(os.getenv("FLIGHT_MAX_PAGES", "3"))
+MIN_INTERVAL_HOURS = float(os.getenv("FLIGHT_MIN_INTERVAL_HOURS", "0"))
 
 if not 1 <= MAX_PAGES <= 30:
     raise RuntimeError("FLIGHT_MAX_PAGES must be between 1 and 30.")
+if not 0 <= MIN_INTERVAL_HOURS <= 24:
+    raise RuntimeError("FLIGHT_MIN_INTERVAL_HOURS must be between 0 and 24.")
 
 # This counts requests made by THIS script, not older requests
 # or requests made elsewhere using your AirLabs key.
@@ -61,6 +65,21 @@ with conn:
             UNIQUE (run_id, source_page, row_on_page)
         )
     """)
+
+    if MIN_INTERVAL_HOURS:
+        last_collected = conn.execute(
+            "SELECT max(fetched_at) FROM raw_flight_observations"
+        ).fetchone()[0]
+        if last_collected is not None:
+            hours_since_collection = (
+                datetime.now(timezone.utc) - last_collected
+            ).total_seconds() / 3600
+            if hours_since_collection < MIN_INTERVAL_HOURS:
+                print(
+                    f"Skipped: last collection was {hours_since_collection:.2f} "
+                    f"hours ago; minimum is {MIN_INTERVAL_HOURS:g} hours."
+                )
+                sys.exit(0)
 
     for page_number in range(1, MAX_PAGES + 1):
         # Check this script's recorded requests for the current UTC month.
